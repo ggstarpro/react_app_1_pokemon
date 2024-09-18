@@ -1,9 +1,85 @@
+import { useEffect, useState } from "react"
 import './App.css';
+import { getAllPokemon, getPokemon } from "./utils/pokemon";
+import Card from "./components/Card/Card";
+import Navbar from "./components/Navbar/Navbar";
 
 function App() {
+  const initialURL = "https://pokeapi.co/api/v2/pokemon";
+  const [loading, setLoading] = useState(true);
+  const [pokemonData, setPokemonData] = useState([]);
+  const [nextURL, setNextURL] = useState('');
+  const [prevURL, setPrevURL] = useState('');
+
+  useEffect(() => {
+    const fetchPokemonData = async () => {
+      // 全てのポケモンデータ取得
+      let res = await getAllPokemon(initialURL);
+      console.log("fetchPokemonData res>", res);
+
+      // 詳細データを取得
+      loadPokemon(res.results)
+      setNextURL(res.next);
+      setPrevURL(res.previous);
+      setLoading(false);
+    }
+    fetchPokemonData();
+  }, []);
+
+  const loadPokemon = async (data) => {
+    // Promise.all: 一つ一つのfetchの20個が終わるまで待つ
+    let _pokemonData = await Promise.all(
+      data.map((pokemon) => {
+        let pokemonRecord = getPokemon(pokemon.url);
+        return pokemonRecord;
+      })
+    );
+    setPokemonData(_pokemonData);
+  }
+
+  // console.log('pokemonData>>', pokemonData);
+
+  const handlePrevPage = async () => {
+    if (!prevURL) return;
+
+    setLoading(true);
+    let data = await getAllPokemon(prevURL);
+    // console.log('handlePrevPage data>', data)
+    await loadPokemon(data.results);
+    setNextURL(data.next);
+    setPrevURL(data.previous)
+    setLoading(false);
+  }
+  const handleNextPage = async () => {
+    setLoading(true);
+    let data = await getAllPokemon(nextURL);
+    // console.log('handleNextPage data>', data)
+    await loadPokemon(data.results);
+    setNextURL(data.next);
+    setPrevURL(data.previous)
+    setLoading(false);
+  }
   return (
-    <div className="App">
-    </div>
+    <>
+      <Navbar />
+      <div className="App">
+        {loading ? (
+          <h1>ロード中</h1>
+        ): (
+          <>
+            <div className="pokemonCardContainer">
+              {pokemonData.map((pokemon, i) => {
+                return <Card pokemon={pokemon} key={i}/>
+              })}
+            </div>
+            <div className="btn">
+              <button onClick={handlePrevPage}>前へ</button>
+              <button onClick={handleNextPage}>次へ</button>
+            </div>
+          </>
+        )}
+      </div>
+    </>
   );
 }
 
